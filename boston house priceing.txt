@@ -1,0 +1,187 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import warnings 
+%matplotlib inline
+warnings.filterwarnings('ignore')
+
+df=pd.read_csv("D:/datsetsaiml/HousingData.csv")
+df
+
+#statistical information
+df.describe()
+
+#datatype information
+df.info()
+
+#to copy 
+df1=df.copy()
+df1
+
+#preprocessing the data
+#hadling the missing values 
+#filling the missing values mean ,mode since it is numerical value
+df1.isnull().sum()
+
+#finding the mean of 'CRIM' 
+df1['CRIM'].mean()
+
+#filling the null values with mean
+df1['CRIM'].fillna(df1['CRIM'].mean(),inplace=True)
+
+#checking the treatment
+df1['CRIM'].isnull().sum()
+
+df1['ZN'].fillna(df1['ZN'].mean(),inplace=True)
+
+df1['INDUS'].fillna(df1['INDUS'].mean(),inplace=True)
+
+df1['CHAS'].fillna(df1['CHAS'].mean(),inplace=True)
+
+df1['LSTAT'].fillna(df1['LSTAT'].mean(),inplace=True)
+
+df1.isnull().sum()
+
+df1['AGE'].fillna(df1['AGE'].mode(),inplace=True)
+
+df1.isnull().sum()
+
+#correlation matrix
+corr=df1.corr()
+plt.figure(figsize=(20,10))
+sns.heatmap(corr, annot=True, cmap='coolwarm')
+
+def correlation(dataset,threshold):
+    col_corr=set()
+    corr_matrix=dataset.corr()
+    for i in range(len(corr_matrix.columns)):
+        for j in range(i):
+            if abs(corr_matrix.iloc[1,j])>threshold:
+                colname=corr_matrix.columns[i]
+                col_corr.add(colname)
+    return col_corr
+
+corr_features=correlation(df1,0.7)
+len(set(corr_features))
+
+#attributes of the table
+corr_features
+
+
+print(df1)
+df1.drop(['AGE'], axis=1, inplace=True)
+
+print(df1)
+
+df1.drop(['TAX','NOX'], axis=1, inplace=True)
+
+df1
+
+plt.figure(figsize=(15,5))
+plt.subplot(1,2,1)
+plt.title('CRIM')
+sns.boxplot(df1['CRIM'])
+
+plt.subplot(1,2,2)
+plt.title('CRIM')
+sns.distplot(df1['CRIM'])
+
+plt.figure(figsize=(15,5))
+plt.subplot(1,2,1)
+plt.title('RM')
+sns.boxplot(df1['RM'])
+
+plt.subplot(1,2,2)
+plt.title('RM')
+sns.distplot(df1['RM'])
+
+#handling the outliers
+q1=df['RM'].quantile(0.25)
+q3=df['RM'].quantile(0.75)
+interq=q3-q1
+
+#printing the quantile 1(25%) ,quantile 3(75%),interquantale(50%)
+q1,q3,interq
+
+#upper limit,lower limit
+ul=q3+(1.5*interq)
+ll=q1+(1.5*interq)
+ul,ll
+
+df1.loc[(df1['MEDV']>ul)|(df1['MEDV']<ll)]
+
+df1.loc[(df['MEDV']>ul),'MEDV']=ul
+df1.loc[(df['MEDV']<ll),'MEDV']=ll
+
+
+
+#after removing the outliner in medv column
+plt.figure(figsize=(15,5))
+plt.subplot(1,2,1)
+plt.title('MEDV')
+sns.boxplot(df1['MEDV'])
+
+plt.subplot(1,2,2)
+plt.title('MEDV')
+sns.distplot(df1['MEDV'])
+
+#spliting independent and dependent variables
+
+x=df1.drop(columns=['MEDV'],axis=1)
+y=df1['MEDV']
+
+x
+
+y
+
+from sklearn.model_selection import train_test_split
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=5)
+
+from sklearn.preprocessing import MinMaxScaler
+scaler=MinMaxScaler()
+scaler.fit(x_train)
+x_train_scaled=scaler.transform(x_train)
+x_test_scaled=scaler.transform(x_test)
+
+x_train_scaled
+
+x_test_scaled
+
+#model training
+def train(model,x,y):
+    #to train  the model
+    model.fit(x_train,y_train)
+    #predict the training set
+    global pred
+    pred=model.predict(x_test)
+
+#evaluating model
+def evaluate_model():
+    from sklearn.model_selection import cross_val_score, train_test_split
+    from sklearn.metrics import mean_squared_error,mean_absolute_error,r2_score
+    #cross checking/validaqtion
+    cv_score=cross_val_score(model,x,y,scoring='neg_mean_squared_error',cv=5)
+    cv_score=np.abs(np.mean(cv_score))
+    print("model report")
+    print("MSE :",mean_squared_error(y_test, pred))
+    print('CV SCORE:' ,cv_score)
+    #mae=mean absolute error
+    print("MAE :", mean_absolute_error(y_test, pred))
+    #rmse square root of mean squared error
+    print("RMSE :",np.sqrt(mean_squared_error(y_test, pred)))
+    #r-square
+    print("r-square :",r2_score(y_test, pred))
+    
+
+#linear regression
+from sklearn.linear_model import LinearRegression
+model=LinearRegression(normalize=True)
+train(model,x,y)
+evaluate_model()
+
+#decision tree regression
+from sklearn.tree import DecisionTreeRegressor
+model=DecisionTreeRegressor()
+train(model,x,y)
+evaluate_model()
